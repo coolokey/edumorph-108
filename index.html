@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EduMorph 108 - 108課綱 AI 智慧命題與題型改編系統</title>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#eef2ff',
+              100: '#e0e7ff',
+              200: '#c7d2fe',
+              500: '#6366f1',
+              600: '#4f46e5',
+              700: '#4338ca',
+              800: '#3730a3',
+              900: '#312e81',
+            },
+            accent: {
+              teal: '#0d9488',
+              amber: '#d97706',
+              rose: '#e11d48',
+              emerald: '#059669'
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Font Awesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <!-- KaTeX for Math Formula Rendering -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+
+  <!-- Chart.js for Competency Radar -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <!-- docx.js & FileSaver for Word generation -->
+  <script src="https://cdn.jsdelivr.net/npm/docx@8.2.3/build/index.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="bg-slate-50 text-slate-800 antialiased min-h-screen flex flex-col font-sans">
+
+  <!-- Top Navigation Header -->
+  <header class="bg-white/90 backdrop-blur-md border-b border-slate-200 sticky top-0 z-50 shadow-sm">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center text-white shadow-md shadow-indigo-200">
+          <i class="fa-solid fa-graduation-cap text-lg"></i>
+        </div>
+        <div>
+          <div class="flex items-center space-x-2">
+            <h1 class="text-lg font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+              EduMorph 108
+            </h1>
+            <span class="text-xs px-2 py-0.5 rounded-full font-medium bg-indigo-50 text-indigo-700 border border-indigo-200">
+              108課綱 AI 命題大師
+            </span>
+          </div>
+          <p class="text-xs text-slate-500">截圖辨識・素養改編・數值約束・Word一鍵出卷</p>
+        </div>
+      </div>
+
+      <div class="flex items-center space-x-2 sm:space-x-3">
+        <!-- Quick Preset Demo Button -->
+        <button id="btn-quick-demo" class="text-xs sm:text-sm px-3 py-1.5 rounded-lg bg-amber-50 text-amber-800 border border-amber-300 hover:bg-amber-100 transition flex items-center space-x-1.5 shadow-sm">
+          <i class="fa-solid fa-wand-magic-sparkles text-amber-600"></i>
+          <span class="font-medium">載入示範題目</span>
+        </button>
+
+        <!-- API Key Config Modal Trigger -->
+        <button id="btn-config-key" class="text-xs sm:text-sm px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition flex items-center space-x-1.5">
+          <i class="fa-solid fa-key text-slate-500"></i>
+          <span id="api-status-text">Gemini API 設定</span>
+        </button>
+
+        <!-- Download Word Dropdown -->
+        <div class="relative inline-block text-left">
+          <button id="btn-export-dropdown" class="text-xs sm:text-sm px-3.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-medium shadow-md shadow-indigo-200 transition flex items-center space-x-2">
+            <i class="fa-solid fa-file-word"></i>
+            <span>匯出試卷 (.docx)</span>
+            <i class="fa-solid fa-chevron-down text-xs"></i>
+          </button>
+          <div id="export-menu" class="hidden absolute right-0 mt-2 w-56 rounded-xl bg-white shadow-xl ring-1 ring-black ring-opacity-5 z-50 divide-y divide-slate-100 py-1">
+            <a href="#" id="export-student-a" class="flex items-center px-4 py-2.5 text-xs sm:text-sm text-slate-700 hover:bg-indigo-50 hover:text-indigo-600">
+              <i class="fa-solid fa-file-lines w-5 text-indigo-500"></i>
+              <span>學生測驗卷 (A卷)</span>
+            </a>
+            <a href="#" id="export-student-b" class="flex items-center px-4 py-2.5 text-xs sm:text-sm text-slate-700 hover:bg-indigo-50 hover:text-indigo-600">
+              <i class="fa-solid fa-clone w-5 text-purple-500"></i>
+              <span>學生平行測驗卷 (B卷)</span>
+            </a>
+            <a href="#" id="export-teacher" class="flex items-center px-4 py-2.5 text-xs sm:text-sm text-slate-700 hover:bg-indigo-50 hover:text-indigo-600">
+              <i class="fa-solid fa-file-shield w-5 text-emerald-600"></i>
+              <span>教師詳解與評分卷</span>
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-1 w-full grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+    <!-- Left Column: Input and Adaptation Control Panel (5 cols) -->
+    <section class="lg:col-span-5 flex flex-col space-y-5">
+      
+      <!-- Card 1: 題目來源輸入 (截圖/貼圖/文字) -->
+      <div class="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm flex flex-col space-y-4">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center space-x-2">
+            <span class="w-6 h-6 rounded-lg bg-indigo-100 text-indigo-600 flex items-center justify-center text-xs font-bold">1</span>
+            <h2 class="text-sm font-bold text-slate-800">原始題目輸入（支援截圖貼上）</h2>
+          </div>
+          <span class="text-xs text-slate-400">可直接 Ctrl+V 貼上截圖</span>
+        </div>
+
+        <!-- 圖片上傳 / 截圖貼上區域 -->
+        <div id="drop-zone" class="border-2 border-dashed border-slate-300 hover:border-indigo-500 rounded-xl p-4 text-center cursor-pointer transition bg-slate-50/60 relative group">
+          <input type="file" id="file-input" accept="image/*" class="hidden">
+          
+          <div id="upload-prompt" class="flex flex-col items-center justify-center py-3">
+            <div class="w-12 h-12 rounded-full bg-indigo-50 text-indigo-500 flex items-center justify-center mb-2 group-hover:scale-110 transition">
+              <i class="fa-solid fa-cloud-arrow-up text-xl"></i>
+            </div>
+            <p class="text-xs font-medium text-slate-700">點擊上傳、拖曳圖片 或 按 <kbd class="px-1.5 py-0.5 text-[10px] font-semibold text-slate-800 bg-slate-200 border border-slate-300 rounded">Ctrl+V</kbd> 貼上截圖</p>
+            <p class="text-[11px] text-slate-400 mt-1">支援考卷截圖、教科書拍照、包含幾何圖形與數學公式</p>
+          </div>
+
+          <!-- 圖片預覽區域 (預設隱藏) -->
+          <div id="image-preview-container" class="hidden relative">
+            <img id="image-preview" src="" alt="題目截圖預覽" class="max-h-48 mx-auto rounded-lg shadow-sm border border-slate-200 object-contain">
+            <button id="btn-remove-image" class="absolute top-1 right-1 w-6 h-6 bg-rose-600 text-white rounded-full text-xs hover:bg-rose-700 transition flex items-center justify-center shadow">
+              <i class="fa-solid fa-xmark"></i>
+            </button>
+            <p class="text-[11px] text-indigo-600 font-medium mt-1">
+              <i class="fa-solid fa-circle-check"></i> 已載入圖片，AI 將啟動多模態視覺辨識
+            </p>
+          </div>
+        </div>
+
+        <!-- 文字題目輸入框 -->
+        <div>
+          <div class="flex items-center justify-between mb-1.5">
+            <label for="raw-question-text" class="text-xs font-semibold text-slate-600">題目文字描述 / 補充說明：</label>
+            <button id="btn-clear-input" class="text-[11px] text-slate-400 hover:text-slate-600">清空</button>
+          </div>
+          <textarea id="raw-question-text" rows="3" class="w-full text-xs text-slate-800 rounded-xl border border-slate-200 p-2.5 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition resize-none placeholder-slate-400" placeholder="若無圖片，也可在此直接貼上考題文字；若有圖片，可在此補充指定條件..."></textarea>
+        </div>
+
+        <!-- 原始解答 (選填) -->
+        <div>
+          <label for="raw-answer-text" class="text-xs font-semibold text-slate-600 block mb-1">原題答案（選填，供 AI 驗算難易度）：</label>
+          <input type="text" id="raw-answer-text" class="w-full text-xs text-slate-800 rounded-lg border border-slate-200 px-2.5 py-1.5 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" placeholder="例如：(C) 或 x = 12 或 無需提供">
+        </div>
+      </div>
+
+      <!-- Card 2: 108 課綱改編參數設定 (核心控制台) -->
+      <div class="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm flex flex-col space-y-4">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center space-x-2">
+            <span class="w-6 h-6 rounded-lg bg-purple-100 text-purple-600 flex items-center justify-center text-xs font-bold">2</span>
+            <h2 class="text-sm font-bold text-slate-800">108 課綱改編客製設定</h2>
+          </div>
+          <span class="text-xs text-purple-700 bg-purple-50 px-2 py-0.5 rounded-full font-medium">素養導向命題</span>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3 text-xs">
+          <!-- 學科領域 -->
+          <div>
+            <label class="block font-semibold text-slate-600 mb-1">學科領域</label>
+            <select id="select-subject" class="w-full rounded-lg border border-slate-200 p-2 bg-white focus:ring-2 focus:ring-indigo-500">
+              <option value="math" selected>📐 國高中數學科</option>
+              <option value="physics">⚡ 理化 / 物理科</option>
+              <option value="chemistry">🧪 化學科</option>
+              <option value="biology">🧬 生物科</option>
+              <option value="chinese">📖 國語文素養</option>
+              <option value="social">🌍 社會 / 地理歷史</option>
+            </select>
+          </div>
+
+          <!-- 目標題型轉換 -->
+          <div>
+            <label class="block font-semibold text-slate-600 mb-1">欲改編為題型</label>
+            <select id="select-target-type" class="w-full rounded-lg border border-slate-200 p-2 bg-white focus:ring-2 focus:ring-indigo-500">
+              <option value="multiple_choice" selected>🔘 單選題 (含診斷誘答項)</option>
+              <option value="multi_select">☑️ 多選題 (5個選項)</option>
+              <option value="fill_in">✏️ 填充題 (留作答格)</option>
+              <option value="comprehensive">📝 計算 / 綜合應用問答題</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- 變量控制群組 -->
+        <div class="space-y-3 pt-2 border-t border-slate-100 text-xs">
+          <!-- 數字變化方式 -->
+          <div>
+            <div class="flex justify-between items-center mb-1">
+              <span class="font-semibold text-slate-700 flex items-center space-x-1">
+                <i class="fa-solid fa-calculator text-indigo-500"></i>
+                <span>數字變換原則（維持數學約束）</span>
+              </span>
+              <span id="label-number-mode" class="text-[11px] text-indigo-600 font-medium">等值計算量・維持整數/簡潔解</span>
+            </div>
+            <select id="select-number-rule" class="w-full rounded-lg border border-slate-200 p-2 bg-white focus:ring-2 focus:ring-indigo-500">
+              <option value="clean_integer" selected>保持整數解或特殊角（避免醜陋小數，維持原解題流暢感）</option>
+              <option value="magnitude_shift">尺度等比微調（數據微調 10~30%，考點相同）</option>
+              <option value="keep_numbers">保留原數字（僅改編情境與人名）</option>
+            </select>
+          </div>
+
+          <!-- 人名與生活情境在地化 -->
+          <div>
+            <div class="flex justify-between items-center mb-1">
+              <span class="font-semibold text-slate-700 flex items-center space-x-1">
+                <i class="fa-solid fa-users text-teal-500"></i>
+                <span>人名與生活情境包裝</span>
+              </span>
+            </div>
+            <select id="select-context-style" class="w-full rounded-lg border border-slate-200 p-2 bg-white focus:ring-2 focus:ring-indigo-500">
+              <option value="modern_tech" selected>🚀 現代科技生活（手機電量、外送訂單、5G網速、無人機）</option>
+              <option value="local_taiwan">🇹🇼 台灣在地素養（高鐵捷運、夜市消費、台南古蹟、珍珠奶茶）</option>
+              <option value="sdgs_eco">🌱 SDGs 永續環保（綠能發電、碳足跡、水資源、二手循環）</option>
+              <option value="school_life">🏫 校園活動探究（校慶園遊會、運動會接力、社團策展）</option>
+            </select>
+          </div>
+
+          <!-- 難易度控制滑桿 -->
+          <div>
+            <div class="flex justify-between items-center mb-1">
+              <span class="font-semibold text-slate-700 flex items-center space-x-1">
+                <i class="fa-solid fa-sliders text-amber-500"></i>
+                <span>難易度維持（等價認知階層）</span>
+              </span>
+              <span id="diff-badge" class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800">
+                難易度等價 (維持相同思考步驟)
+              </span>
+            </div>
+            <input type="range" id="slider-difficulty" min="1" max="3" value="2" step="1" class="w-full accent-indigo-600 cursor-pointer">
+            <div class="flex justify-between text-[10px] text-slate-400 px-1 mt-0.5">
+              <span>稍易 (基礎化簡)</span>
+              <span>等價 (原題難度)</span>
+              <span>微增 (綜合應用)</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 觸發按鈕 -->
+        <div class="pt-2">
+          <button id="btn-generate-morph" class="w-full py-3 rounded-xl bg-gradient-to-r from-indigo-600 via-indigo-700 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-bold text-sm shadow-lg shadow-indigo-200 transition transform active:scale-[0.99] flex items-center justify-center space-x-2">
+            <i class="fa-solid fa-wand-magic-sparkles text-amber-300"></i>
+            <span>執行 108 課綱智慧改題</span>
+          </button>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- Right Column: Results & Interactive Comparison (7 cols) -->
+    <section class="lg:col-span-7 flex flex-col space-y-5">
+      
+      <!-- Top Status / Switch Tabs -->
+      <div class="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm flex items-center justify-between">
+        <div class="flex items-center space-x-1 sm:space-x-2 bg-slate-100 p-1 rounded-xl text-xs font-semibold text-slate-600">
+          <button id="tab-result-a" class="px-3 py-1.5 rounded-lg bg-white text-indigo-700 shadow-sm transition">
+            改編題卷 (A卷)
+          </button>
+          <button id="tab-result-b" class="px-3 py-1.5 rounded-lg text-slate-500 hover:text-slate-800 transition">
+            平行題卷 (B卷)
+          </button>
+          <button id="tab-comparison" class="px-3 py-1.5 rounded-lg text-slate-500 hover:text-slate-800 transition">
+            原題 vs 改編對照
+          </button>
+          <button id="tab-analysis" class="px-3 py-1.5 rounded-lg text-slate-500 hover:text-slate-800 transition">
+            素養向度評析
+          </button>
+        </div>
+
+        <div class="flex items-center space-x-2 text-xs">
+          <span id="status-indicator" class="inline-flex items-center px-2 py-0.5 rounded-full font-medium bg-slate-100 text-slate-600">
+            <span class="w-1.5 h-1.5 rounded-full bg-slate-400 mr-1.5"></span> 等待輸入
+          </span>
+        </div>
+      </div>
+
+      <!-- View 1: 改編成果 (A卷/B卷主檢視) -->
+      <div id="view-result-main" class="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm flex flex-col space-y-5">
+        
+        <!-- Header: 題號、分值、素養標籤 -->
+        <div class="flex flex-wrap items-center justify-between gap-2 pb-4 border-b border-slate-100">
+          <div class="flex items-center space-x-2">
+            <span id="display-qtype-badge" class="px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-700 font-bold text-xs border border-indigo-200">
+              單選題
+            </span>
+            <span id="display-score-badge" class="px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 text-xs">
+              配分：5 分
+            </span>
+            <span id="display-diff-badge" class="px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 text-xs border border-emerald-200">
+              難度：等價原題
+            </span>
+          </div>
+          <div class="flex items-center space-x-1.5" id="tag-container">
+            <span class="text-[11px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">生活情境化</span>
+            <span class="text-[11px] px-2 py-0.5 rounded-full bg-purple-50 text-purple-700">符號運算與應用</span>
+          </div>
+        </div>
+
+        <!-- 題目題幹呈現 (支援 KaTeX 公式) -->
+        <div class="space-y-3">
+          <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider">改編後題目（題幹）</h3>
+          <div id="display-stem" class="text-sm sm:text-base text-slate-800 leading-relaxed bg-slate-50/50 p-4 rounded-xl border border-slate-100 font-serif min-h-[80px]">
+            請在左側輸入題目或點擊上方「載入示範題目」以體驗改編效果。
+          </div>
+        </div>
+
+        <!-- 選項或作答區 -->
+        <div id="display-options-container" class="space-y-2">
+          <!-- 選項將動態插入此處 -->
+        </div>
+
+        <!-- 教師解答與解題步驟 (可展開收合) -->
+        <div class="pt-4 border-t border-slate-100">
+          <button id="toggle-solution-btn" class="flex items-center justify-between w-full text-left py-2 px-3 rounded-xl bg-slate-50 hover:bg-slate-100 transition text-xs font-bold text-slate-700">
+            <span class="flex items-center space-x-2">
+              <i class="fa-solid fa-lightbulb text-amber-500"></i>
+              <span>參考解答與詳細步驟剖析（教師用）</span>
+            </span>
+            <i id="toggle-solution-icon" class="fa-solid fa-chevron-down text-slate-400 transition-transform"></i>
+          </button>
+
+          <div id="solution-content" class="mt-3 p-4 rounded-xl bg-amber-50/40 border border-amber-100/60 space-y-3 text-xs leading-relaxed text-slate-700">
+            <div>
+              <span class="font-bold text-slate-900">標準答案：</span>
+              <span id="display-correct-answer" class="text-emerald-700 font-bold ml-1 font-mono text-sm">(尚無資料)</span>
+            </div>
+            <div>
+              <span class="font-bold text-slate-900 block mb-1">解題思路與關鍵步驟：</span>
+              <div id="display-steps" class="space-y-1.5 text-slate-600 pl-3 border-l-2 border-amber-300">
+                點擊執行改題後，將自動生成包含逐步得分點的詳解。
+              </div>
+            </div>
+            <div id="distractor-analysis-box" class="pt-2 border-t border-amber-200/50">
+              <span class="font-bold text-slate-900 block mb-1">🎯 誘答項診斷（學生常見迷思概念）：</span>
+              <ul id="display-distractor-analysis" class="space-y-1 text-slate-600 list-disc list-inside">
+                <li>選項分析將於生成時自動列出。</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- View 2: 原題 vs 改編對照視窗 (預設隱藏) -->
+      <div id="view-comparison" class="hidden bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-4">
+        <h3 class="text-sm font-bold text-slate-800 flex items-center space-x-2">
+          <i class="fa-solid fa-code-compare text-indigo-600"></i>
+          <span>原題與改編題雙欄深度對照</span>
+        </h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+          <!-- 原始題目卡 -->
+          <div class="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
+            <div class="flex items-center justify-between pb-2 border-b border-slate-200 font-bold text-slate-700">
+              <span>原始題目 (Original)</span>
+              <span class="text-[10px] px-1.5 py-0.5 rounded bg-slate-200 text-slate-600">原版</span>
+            </div>
+            <div id="compare-original-stem" class="text-slate-800 leading-relaxed font-serif min-h-[100px]">
+              尚無原題內容。
+            </div>
+            <div class="pt-2 border-t border-slate-200 text-slate-500">
+              <span class="font-semibold">原解答：</span> <span id="compare-original-ans">--</span>
+            </div>
+          </div>
+
+          <!-- 改編題目卡 -->
+          <div class="p-4 rounded-xl bg-indigo-50/50 border border-indigo-200 space-y-2">
+            <div class="flex items-center justify-between pb-2 border-b border-indigo-100 font-bold text-indigo-900">
+              <span>改編題目 (Adapted)</span>
+              <span class="text-[10px] px-1.5 py-0.5 rounded bg-indigo-200 text-indigo-800">108 素養版</span>
+            </div>
+            <div id="compare-adapted-stem" class="text-slate-800 leading-relaxed font-serif min-h-[100px]">
+              尚無改編內容。
+            </div>
+            <div class="pt-2 border-t border-indigo-100 text-indigo-900">
+              <span class="font-semibold">新解答：</span> <span id="compare-adapted-ans">--</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 變革分析表 -->
+        <div class="mt-4 p-3 bg-slate-50 rounded-xl text-xs space-y-1.5 border border-slate-200">
+          <div class="font-bold text-slate-700 mb-1">💡 改編核心差異與亮點：</div>
+          <div class="grid grid-cols-3 gap-2 text-slate-600">
+            <div class="bg-white p-2 rounded border border-slate-100">
+              <div class="text-[10px] text-slate-400">變量更動</div>
+              <div id="comp-var-desc" class="font-medium text-slate-800">數值更換、人名更新</div>
+            </div>
+            <div class="bg-white p-2 rounded border border-slate-100">
+              <div class="text-[10px] text-slate-400">認知歷程階層</div>
+              <div id="comp-bloom-desc" class="font-medium text-emerald-700">理解 / 應用 (等價)</div>
+            </div>
+            <div class="bg-white p-2 rounded border border-slate-100">
+              <div class="text-[10px] text-slate-400">生活情境融入</div>
+              <div id="comp-context-desc" class="font-medium text-purple-700">現代生活科技情境</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- View 3: 素養向度與雷達評析 (預設隱藏) -->
+      <div id="view-analysis" class="hidden bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-4">
+        <h3 class="text-sm font-bold text-slate-800 flex items-center space-x-2">
+          <i class="fa-solid fa-chart-pie text-indigo-600"></i>
+          <span>108 課綱核心素養向度評量分析</span>
+        </h3>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
+          <div class="h-64 relative flex items-center justify-center">
+            <canvas id="competency-radar-chart"></canvas>
+          </div>
+          <div class="space-y-3 text-xs">
+            <div class="p-3 bg-indigo-50/60 rounded-xl border border-indigo-100">
+              <div class="font-bold text-indigo-900 mb-1">三大面向與九大素養指標</div>
+              <p id="analysis-triad-desc" class="text-slate-600 leading-relaxed">
+                本題聚焦於「符號運用與溝通表達 (B1)」及「系統思考與解決問題 (A2)」，透過改編情境提升「生活素養與社會適應 (C2)」。
+              </p>
+            </div>
+            <div class="p-3 bg-slate-50 rounded-xl border border-slate-200">
+              <div class="font-bold text-slate-800 mb-1">評量給分規準 (Rubrics) 建議</div>
+              <ul id="analysis-rubrics" class="list-disc list-inside text-slate-600 space-y-1">
+                <li>精熟：能完整列式並準確完成數值求解（滿分）。</li>
+                <li>基礎：列式正確但最後算術計算微有瑕疵（給 70% 分數）。</li>
+                <li>待加強：無法將生活情境翻譯為數學代數關係（0~30% 分數）。</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- API Key Config Modal -->
+  <div id="modal-api-key" class="hidden fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-4">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center space-x-2">
+          <div class="w-8 h-8 rounded-lg bg-indigo-100 text-indigo-600 flex items-center justify-center text-sm">
+            <i class="fa-solid fa-key"></i>
+          </div>
+          <h3 class="text-sm font-bold text-slate-800">Google Gemini API 設定</h3>
+        </div>
+        <button id="btn-close-modal" class="text-slate-400 hover:text-slate-600">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <p class="text-xs text-slate-600 leading-relaxed">
+        系統呼叫 Gemini 1.5 / 2.5 Flash 進行多模態截圖辨識與 108 課綱改編。您的 API Key 僅儲存於當前瀏覽器的 LocalStorage，絕不上傳第三方伺服器。
+      </p>
+
+      <div>
+        <label for="input-gemini-key" class="block text-xs font-semibold text-slate-700 mb-1">Gemini API Key：</label>
+        <input type="password" id="input-gemini-key" class="w-full text-xs text-slate-800 rounded-lg border border-slate-300 p-2.5 focus:ring-2 focus:ring-indigo-500 font-mono" placeholder="AIzaSy...">
+        <div class="flex justify-between items-center mt-1 text-[11px]">
+          <a href="https://aistudio.google.com/app/apikey" target="_blank" class="text-indigo-600 hover:underline">
+            <i class="fa-solid fa-arrow-up-right-from-square"></i> 免費取得 Google API Key
+          </a>
+          <button id="btn-test-key" class="text-slate-500 hover:text-indigo-600">測試連線</button>
+        </div>
+      </div>
+
+      <div class="flex justify-end space-x-2 pt-2">
+        <button id="btn-cancel-key" class="px-4 py-2 rounded-lg text-xs font-medium text-slate-600 hover:bg-slate-100 transition">
+          取消
+        </button>
+        <button id="btn-save-key" class="px-4 py-2 rounded-lg text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 shadow-md shadow-indigo-200 transition">
+          儲存設定
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Loading Overlay -->
+  <div id="loading-overlay" class="hidden fixed inset-0 bg-slate-900/40 backdrop-blur-[2px] z-50 flex flex-col items-center justify-center p-4">
+    <div class="bg-white rounded-2xl p-6 shadow-2xl flex flex-col items-center space-y-4 max-w-sm text-center">
+      <div class="relative w-16 h-16">
+        <div class="absolute inset-0 rounded-full border-4 border-indigo-100 animate-pulse"></div>
+        <div class="absolute inset-0 rounded-full border-4 border-indigo-600 border-t-transparent animate-spin"></div>
+        <div class="absolute inset-0 flex items-center justify-center text-indigo-600">
+          <i class="fa-solid fa-graduation-cap text-lg"></i>
+        </div>
+      </div>
+      <div>
+        <h4 id="loading-title" class="text-sm font-bold text-slate-800">正在執行多模態素養改編...</h4>
+        <p id="loading-step" class="text-xs text-slate-500 mt-1">分析原題數值約束與布魯姆認知階層中...</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="bg-white border-t border-slate-200 py-4 mt-8">
+    <div class="max-w-7xl mx-auto px-4 text-center text-xs text-slate-500 flex flex-col sm:flex-row items-center justify-between gap-2">
+      <div class="flex items-center space-x-2">
+        <span class="font-bold text-slate-700">EduMorph 108</span>
+        <span>• 108 課綱智慧命題競賽專案</span>
+      </div>
+      <div>
+        <span>符合教育部素養導向命題規範 • 支援 Word (.docx) 雙版即時匯出</span>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Scripts -->
+  <script src="docx-export.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,79 @@
+/* Custom Styles for EduMorph 108 */
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Formula & Math Display Styling */
+.katex-display {
+  margin: 0.75em 0 !important;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0.25em 0;
+}
+
+.katex {
+  font-size: 1.08em;
+}
+
+/* Drag and Drop Zone Animation */
+#drop-zone.dragover {
+  border-color: #6366f1;
+  background-color: #eef2ff;
+  transform: scale(1.01);
+}
+
+/* Option item styling in Preview */
+.option-item {
+  transition: all 0.15s ease-in-out;
+}
+.option-item:hover {
+  border-color: #c7d2fe;
+  background-color: #f8faff;
+}
+
+/* Fill-in-the-blank underline style */
+.fill-blank {
+  display: inline-block;
+  min-width: 80px;
+  border-bottom: 2px solid #6366f1;
+  text-align: center;
+  font-weight: bold;
+  color: #4338ca;
+  margin: 0 4px;
+}
+
+/* Glassmorphism accents */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+/* Fade in animation */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
